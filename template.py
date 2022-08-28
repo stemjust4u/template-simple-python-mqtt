@@ -194,7 +194,7 @@ def main():
                         outgoingD['data']['sensorData1f'] = sensorData1
                         outgoingD['data']['sensorData2i'] = sensorData2
                         mqtt_client.publish(demoSensor.topic, json.dumps(outgoingD['data']))  # publish data
-                        logging.debug("(mqtt) Demo sensor{} data: {:.1f}, {}".format(idx, sensorData1, sensorData2))
+                        logging.debug("(mqtt) Demo sensor {}".format(outgoingD))
                 except RuntimeError as error:
                     logging.info(error.args[0])
                     continue
