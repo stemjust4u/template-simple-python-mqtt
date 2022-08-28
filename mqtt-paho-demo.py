@@ -22,7 +22,7 @@ from subprocess import check_output # alternate method to see IP address
 # Getting IP address. IP address will change over time and if Pi is offline vs online. 
 # Using a couple different methods from Dougie Lawson/Gpayne
 
-def get_ipGP():
+def get_ipGP():  # Method by GPayen
     ip = "not connected"
     routes = json.loads(os.popen("ip -j -4 route").read())
     for r in routes:
@@ -31,28 +31,18 @@ def get_ipGP():
             continue
     return ip
 
-def get_ipDL():
-    gw = os.popen("ip -4 route show default").read().split()
-    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    s.connect((gw[2], 0))
-    ip = s.getsockname()[0]
-    gateway = gw[2]
-    return ip
-
 def check_connection():
     sleep(3) # allow time for device to connect
-    logging.info(check_output(['hostname', '-I'])) # Alternate way to display IP for confirmation
+    #logging.info(check_output(['hostname', '-I'])) # Alternate way to display IP for confirmation
     hostname = socket.gethostname()
-    ip = socket.gethostbyname(hostname)
-    logging.info("IP from gethostbyname: {0}".format(ip))
-    ip1= socket.gethostbyname(hostname)  # May not be the wlan0 IP address. May be the lo address.
-    #ip2 = get_ipDL()  # Method by Dougie Lawson
-    ip3 = get_ipGP()  # Method by GPayne
-    if ip3 == '127.0.0.1' or ip3 == '127.0.1.1':
+    ip = socket.gethostbyname(hostname) # May not be the wlan0 IP address. May be the lo address.
+    #logging.info("IP from gethostbyname: {0}".format(ip))
+    ipGP = get_ipGP()
+    if ipGP == '127.0.0.1' or ipGP == '127.0.1.1':
         connected = False
     else:
         connected = True
-    return connected, hostname, ip3
+    return connected, hostname, ipGP
 
 
 #====== MQTT CALLBACK FUNCTIONS ==========#
@@ -64,15 +54,15 @@ def check_connection():
 
 def on_connect(client, userdata, flags, rc):
     """ on connect callback verifies a connection established and subscribe to TOPICs"""
-    logging.info("attempting on_connect")
+    logging.info("MQTT attempting on_connect")
     if rc==0:
         mqtt_client.connected = True          # If rc = 0 then successful connection
         client.subscribe(MQTT_SUB_TOPIC)     # Subscribe to topic
-        logging.info("Successful Connection: {0}".format(str(rc)))
-        logging.info("Subscribed to: {0}\n".format(MQTT_SUB_TOPIC))
+        logging.info("MQTT Successful Connection: {0}".format(str(rc)))
+        logging.info("MQTT Subscribed to: {0}\n".format(MQTT_SUB_TOPIC))
     else:
         mqtt_client.failed_connection = True  # If rc != 0 then failed to connect. Set flag to stop mqtt loop
-        logging.info("Unsuccessful Connection - Code {0}".format(str(rc)))
+        logging.info("MQTT Unsuccessful Connection - Code {0}".format(str(rc)))
 
     ''' Code descriptions
         0: Successful Connection
@@ -89,20 +79,20 @@ def on_message(client, userdata, msg):
         incomingD = json.loads(str(msg.payload.decode("utf-8", "ignore")))  # decode the json msg and convert to python dictionary
         mqtt_newmsg = True
         # Debugging. Will print the JSON incoming payload and unpack the converted dictionary
-        logging.debug("Receive: msg on subscribed topic: {0} with payload: {1}".format(msg.topic, str(msg.payload))) 
-        logging.debug("on_message converted (JSON->Dictionary) and unpacking")
+        logging.debug("MQTT Receive: msg on subscribed topic: {0} with payload: {1}".format(msg.topic, str(msg.payload))) 
+        logging.debug("MQTT on_message converted (JSON->Dictionary) and unpacking")
         for key, value in incomingD.items():
-            logging.debug("on_message Dict key:{0} value:{1}\n".format(key, value))
+            logging.debug("MQTT on_message Dict key:{0} value:{1}\n".format(key, value))
 
 def on_publish(client, userdata, mid):
     """on publish will send data to broker"""
     #Debugging. Will unpack the dictionary and then the converted JSON payload
-    logging.debug("msg ID: " + str(mid)) 
-    logging.debug("Published msg {0} with payload:{1}".format(MQTT_PUB_TOPIC, json.dumps(outgoingD)))
+    logging.debug("MQTT msg ID: " + str(mid)) 
+    logging.debug("MQTT Published msg {0} with payload:{1}".format(MQTT_PUB_TOPIC, json.dumps(outgoingD)))
     pass 
 
 def on_disconnect(client, userdata,rc=0):
-    logging.debug("DisConnected result code "+str(rc))
+    logging.debug("MQTT Disconnected result code "+str(rc))
     mqtt_client.loop_stop()
 
 def get_login_info(file):
@@ -128,20 +118,20 @@ def main():
     # mqtt/paho demo so no hardware to setup.
 
     #====   SETUP MQTT =================#
-    
+    logging.info("Checking for internet connection")
     connected, hostname, ip_address= check_connection()
 
     if connected:
-        logging.info("Connected first time")
+        logging.info("Appears connected to internet in first attempt")
     else:
-        logging.info("Not connected first time")
-        logging.info("Waiting and then checking connection 2nd time")
+        logging.info("Does not appear connected to internet on first check")
+        logging.info("Waiting and then checking internet connection 2nd time")
         sleep(3)
         connected, hostname, ip_address= check_connection()
         if connected:
-            logging.info("2nd check successful")
+            logging.info("2nd internet check successful")
         else:
-            logging.info("2nd check failed. Either offline or problems connecting.")
+            logging.info("2nd internet check failed. Either offline or problems connecting.")
     logging.info("IP address: {0}".format(ip_address))
     logging.info("Hostname: {0}".format(hostname))
     user_info = get_login_info("stem")
@@ -167,7 +157,7 @@ def main():
     mqtt_client.on_disconnect = on_disconnect             # Bind on disconnect
     mqtt_client.on_message = on_message                   # Bind on message
     mqtt_client.on_publish = on_publish                   # Bind on publish
-    logging.info("Connecting to: {0}".format(MQTT_SERVER))
+    logging.info("MQTT Connecting to mqtt server: {0}".format(MQTT_SERVER))
     mqtt_client.connect(MQTT_SERVER, 1883) # Connect to mqtt broker. This is a blocking function. Script will stop while connecting.
     mqtt_client.loop_start()               # Start monitoring loop as asynchronous. Starts a new thread and will process incoming/outgoing messages.
     # Monitor if we're in process of connecting or if the connection failed
