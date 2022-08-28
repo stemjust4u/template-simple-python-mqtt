@@ -169,8 +169,8 @@ def main():
 
     # Hardware setup
     demoHostMachine = {
-        1: DemoSensor(led_pin=26, pub_topic='demo/sensor1/data'),
-        2: DemoSensor(led_pin=27, pub_topic='demo/sensor2/data')
+        1: DemoSensor(led_pin=26, pub_topic='demo/sensor/data'),
+        2: DemoSensor(led_pin=27, pub_topic='demo/sensor/data')
     }
 
     demoHostMachine[1].led.on()
