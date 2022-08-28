@@ -1,15 +1,17 @@
-#!/home/pi/1/PROJECT_FOLDER/.venv/bin/python3
+#!/home/pi/1/template-simple-python-mqtt/.venv/bin/python3
 
 from time import sleep, perf_counter
-import logging
+import logging, random
+from gpiozero import LED         # used to check initial setup
 import paho.mqtt.client as mqtt  # used for mqtt
 import sys, socket, os, json     # Used for mqtt
 from pathlib import Path         # Used for mqtt
 from subprocess import check_output # alternate method to see IP address
 
-class Freezer:
+class DemoSensor:
 
-    def __init__(self, led_pin, dht_pin, pub_topic):
+    def __init__(self, led_pin, pub_topic):
+        self.led = LED(led_pin)
         self.topic = pub_topic
 
 
@@ -43,15 +45,15 @@ def check_connection():
 
 def on_connect(client, userdata, flags, rc):
     """ on connect callback verifies a connection established and subscribe to TOPICs"""
-    logging.info("attempting on_connect")
+    logging.info("(mqtt) attempting on_connect")
     if rc==0:
         mqtt_client.connected = True          # If rc = 0 then successful connection
         client.subscribe(MQTT_SUB_TOPIC)     # Subscribe to topic
-        logging.info("Successful Connection: {0}".format(str(rc)))
-        logging.info("Subscribed to: {0}\n".format(MQTT_SUB_TOPIC))
+        logging.info("(mqtt) Successful Connection: {0}".format(str(rc)))
+        logging.info("(mqtt) Subscribed to: {0}\n".format(MQTT_SUB_TOPIC))
     else:
         mqtt_client.failed_connection = True  # If rc != 0 then failed to connect. Set flag to stop mqtt loop
-        logging.info("Unsuccessful Connection - Code {0}".format(str(rc)))
+        logging.info("(mqtt) Unsuccessful Connection - Code {0}".format(str(rc)))
 
     ''' Code descriptions
         0: Successful Connection
@@ -68,18 +70,19 @@ def on_message(client, userdata, msg):
         incomingD = json.loads(str(msg.payload.decode("utf-8", "ignore")))  # decode the json msg and convert to python dictionary
         mqtt_newmsg = True
         # Debugging. Will print the JSON incoming payload and unpack the converted dictionary
-        logging.debug("Receive: msg on subscribed topic: {0} with payload: {1}".format(msg.topic, str(msg.payload))) 
-        logging.debug("on_message converted (JSON->Dictionary) and unpacking")
+        logging.debug("(mqtt) Receive: msg on subscribed topic: {0} with payload: {1}".format(msg.topic, str(msg.payload))) 
+        logging.debug("(mqtt) on_message converted (JSON->Dictionary) and unpacking")
         for key, value in incomingD.items():
-            logging.debug("on_message Dict key:{0} value:{1}\n".format(key, value))
+            logging.debug("(mqtt) on_message Dict key:{0} value:{1}\n".format(key, value))
 
 def on_publish(client, userdata, mid):
     """on publish will send data to broker"""
-    logging.debug("msg ID: " + str(mid)) 
+    #logging.debug("(mqtt) msg ID: " + str(mid))
+    #logging.debug("(mqtt) Published msg {0} with payload:{1}".format(MQTT_PUB_TOPIC, json.dumps(outgoingD)))
     pass 
 
 def on_disconnect(client, userdata,rc=0):
-    logging.debug("DisConnected result code "+str(rc))
+    logging.debug("(mqtt) DisConnected result code "+str(rc))
     mqtt_client.loop_stop()
 
 def get_login_info(file):
@@ -92,7 +95,7 @@ def main():
     ''' define global variables '''
     global mqtt_client, outgoingD, incomingD, mqtt_newmsg
     global MQTT_SUB_TOPIC, MQTT_PUB_RPI_TOPIC           # Can add more topics for subscribing/publishing
-    global led
+    global led 
 
     #==== LOGGING/DEBUGGING ============#
     # Logging package allows you to easiliy turn print-like statements on/off GLOBALLY with 'level' settings below
@@ -102,37 +105,31 @@ def main():
                                               # Set to INFO for status messages only.
                                               # Set to CRITICAL to turn off
 
-    #==== HARDWARE SETUP ===============# 
-
-    freezers = {
-        1: Freezer(led_pin=27, dht_pin=1, pub_topic='trailer/freezer1/data')
-    }
-
     #====   SETUP MQTT =================#
     # Check for wifi connection. Using hostname for MQTT_SERVER so IP address is not necessary but IP add can still be useful.
 
     connected, hostname, ip_address= check_connection()
     if connected:
-        logging.info("Connected first time")
+        logging.info("Host appears connected to internet in first attempt. Continuing with MQTT setup.")
     else:
-        logging.info("Not connected first time")
-        logging.info("Waiting and then checking connection 2nd time")
+        logging.info("Host does not appear connected to internet on first check")
+        logging.info("Waiting and then checking internet connection 2nd time")
         sleep(3)
         connected, hostname, ip_address= check_connection()
         if connected:
-            logging.info("2nd check successful")
+            logging.info("2nd internet check successful. Continuing with MQTT setup.")
         else:
-            logging.info("2nd check failed. Either offline or problems connecting.")
-    logging.info("IP address: {0}".format(ip_address))
-    logging.info("Hostname: {0}".format(hostname))
+            logging.info("2nd internet check failed. Host either offline or problems connecting. Continuing with MQTT setup.")
+    logging.info("Host IP  : {0}".format(ip_address))
+    logging.info("Host name: {0}".format(hostname))
 
-    user_info = get_login_info("cred")
-    MQTT_SERVER = 'raspberrypi.local'            # Replace with IP address of device running mqtt server/broker
+    user_info = get_login_info("stem")
+    MQTT_SERVER = 'rpi3mqtt1.local'            # Replace with IP address of device running mqtt server/broker
     MQTT_USER = user_info[0]                     # Replace with your mqtt user ID
     MQTT_PASSWORD = user_info[1]                 # Replace with your mqtt password
-    MQTT_SUB_TOPIC = 'trailer/pi/instructions'   # Subscribe topic (incoming messages, instructions)
-    # Note -  Temp data is published on a topic for each freezer defined in Hardware Setup
-    MQTT_PUB_RPI_TOPIC = 'trailer/rpi/connection'     # Publish topic (outgoing messages, data, instructions)
+    MQTT_SUB_TOPIC = 'template/host/instructions'   # Subscribe topic (incoming messages, instructions)
+    # Note -  Temp data is published on a topic for each demoSensor defined in Hardware Setup
+    MQTT_PUB_RPI_TOPIC = 'template/host/info'     # Publish topic (outgoing messages, data, instructions)
     MQTT_CLIENT_ID = 'pi3B'                      # Give your device a name
     WIFI_SSID = user_info[2]                     # Replace with your wifi SSID
     WIFI_PASSWORD = user_info[3]                 # Replace with your wifi password
@@ -161,11 +158,18 @@ def main():
 
     #==== MAIN LOOP ====================#
     # MQTT setup is successful. Initialize dictionaries and start the main loop.
-    freezers[1].led.on()
+
+    # Hardware setup
+    demoHostMachine = {
+        1: DemoSensor(led_pin=26, pub_topic='demo/sensor1/data'),
+        2: DemoSensor(led_pin=27, pub_topic='demo/sensor2/data')
+    }
+
+    demoHostMachine[1].led.on()
     outgoingD, incomingD = {}, {}
     outgoingD['data'] = {}
-    outgoingD['ipAddr'] = check_connection()
-    mqtt_client.publish(MQTT_PUB_RPI_TOPIC, json.dumps(outgoingD['ipAddr']))  # publish IP address info
+    #outgoingD['ipAddr'] = check_connection()
+    # mqtt_client.publish(MQTT_PUB_RPI_TOPIC, json.dumps(outgoingD['ipAddr']))  # publish IP address info
     mqtt_newmsg = False
     t0_sec = perf_counter()
     msginterval = 3.0  # Adjust for how often data should be collected. DHT11 min is 2sec
@@ -175,25 +179,17 @@ def main():
             if (perf_counter() - t0_sec) > msginterval:
                 t0_sec = perf_counter()
                 try:
-                    for idx, freezer in freezers.items():
-                        temperature_c = freezer.dht.temperature
-                        temperature_f = temperature_c * (9 / 5) + 32
-                        humidity = freezer.dht.humidity
-                        outgoingD['data']['freezeri'] = idx
-                        outgoingD['data']['tempFf'] = float(temperature_f)
-                        outgoingD['data']['humidityi'] = int(humidity)
-                        mqtt_client.publish(freezer.topic, json.dumps(outgoingD['data']))  # publish data
-                        logging.debug(
-                            "Temp feezer{}: {:.1f} F / {:.1f} C    Humidity: {}% ".format(
-                                idx, temperature_f, temperature_c, humidity
-                            )
-                        )
+                    for idx, demoSensor in demoHostMachine.items():
+                        sensorData1 = float(random.randrange(1, 50, 1))
+                        sensorData2 = int(random.randrange(1, 50, 1))
+                        outgoingD['data']['demoSensori'] = idx
+                        outgoingD['data']['sensorData1f'] = sensorData1
+                        outgoingD['data']['sensorData2i'] = sensorData2
+                        mqtt_client.publish(demoSensor.topic, json.dumps(outgoingD['data']))  # publish data
+                        logging.debug("(mqtt) Demo sensor{} data: {:.1f}, {}".format(idx, sensorData1, sensorData2))
                 except RuntimeError as error:
                     logging.info(error.args[0])
                     continue
-                #except Exception as error:  # Commenting out to see if it will retry on error
-                #    freezer1DHT.exit()
-                #    raise error
     except KeyboardInterrupt:
         logging.info("Pressed ctrl-C")
     finally:
