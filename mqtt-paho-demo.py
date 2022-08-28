@@ -1,4 +1,4 @@
-#!/home/pi/1/TEMPLATE-SIMPLE-PYTHON-MQTT/.venv/bin/python3
+#!/home/pi/1/template-simple-python-mqtt/.venv/bin/python3
 
 # To create venv and activate
 # $ python3.7 -m venv .venv
@@ -144,8 +144,8 @@ def main():
             logging.info("2nd check failed. Either offline or problems connecting.")
     logging.info("IP address: {0}".format(ip_address))
     logging.info("Hostname: {0}".format(hostname))
-    user_info = get_login_info("cred")
-    MQTT_SERVER = 'raspberrypi.local'                   # Replace with IP address of device running mqtt server/broker
+    user_info = get_login_info("stem")
+    MQTT_SERVER = 'rpi3mqtt1.local'                   # Replace with IP address of device running mqtt server/broker
     MQTT_USER = user_info[0]                     # Replace with your mqtt user ID
     MQTT_PASSWORD = user_info[1]                 # Replace with your mqtt password
     MQTT_SUB_TOPIC = 'demo/sbc/instructions'       # Subscribe topic (incoming messages, instructions)
