@@ -1,5 +1,13 @@
 #!/home/pi/1/template-simple-python-mqtt/.venv/bin/python3
 
+# Do search and replace to convert from demo to real code
+# demoHostMachine --> RPi
+# DemoSensor --> thermocouple
+# demoSensor
+# sensor     (1, 2, ..)
+# sensorData (1, 2, ..)
+# demo --> RPi
+
 from time import sleep, perf_counter
 import logging, random
 from gpiozero import LED         # used to check initial setup
