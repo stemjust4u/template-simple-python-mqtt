@@ -1,9 +1,7 @@
 #!/home/pi/1/PROJECT_FOLDER/.venv/bin/python3
 
 from time import sleep, perf_counter
-import board, logging
-import adafruit_dht
-from gpiozero import LED
+import logging
 import paho.mqtt.client as mqtt  # used for mqtt
 import sys, socket, os, json     # Used for mqtt
 from pathlib import Path         # Used for mqtt
@@ -12,8 +10,6 @@ from subprocess import check_output # alternate method to see IP address
 class Freezer:
 
     def __init__(self, led_pin, dht_pin, pub_topic):
-        self.led = LED(led_pin)
-        self.dht = adafruit_dht.DHT22(dht_pin, use_pulseio=False)
         self.topic = pub_topic
 
 
@@ -109,7 +105,7 @@ def main():
     #==== HARDWARE SETUP ===============# 
 
     freezers = {
-        1: Freezer(led_pin=27, dht_pin=board.D18, pub_topic='trailer/freezer1/data')
+        1: Freezer(led_pin=27, dht_pin=1, pub_topic='trailer/freezer1/data')
     }
 
     #====   SETUP MQTT =================#
